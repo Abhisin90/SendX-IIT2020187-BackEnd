@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Crawler</title>
+</head>
+<body>
+    <h1>Crawl any website you want</h1>
+
+    <form action="/crawl-url">
+        <label for="url">URL</label>
+        <input type="text" id="url" name="url" class="url" required>
+        <label for="paid">Are you a paid customer</label>
+        <select id="paid" required>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+        </select>
+        <button type="submit">Submit URL</button>
+    </form>
+</body>
+</html>
