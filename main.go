@@ -33,6 +33,8 @@ func home(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+//  By using different user agent strings, the crawler can mimic different browsers and
+// potentially avoid being blocked or rate-limited by websites.
 var UserAgents = []string {
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
@@ -40,7 +42,8 @@ var UserAgents = []string {
 	"Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1",
 }
 
-// The function `crawling` uses the Colly library in Go to crawl web pages starting from a given URL.
+// The `crawling` function is responsible for performing web crawling on a given URL. It uses the
+// `colly` package, which is a powerful web scraping framework for Go.
 func crawling(url string) ([]string ,error) {	
 	c := colly.NewCollector()
 	c.UserAgent = UserAgents[rand.Int() % len(UserAgents)]
@@ -76,9 +79,10 @@ func crawling(url string) ([]string ,error) {
 	return caching, nil 
 }
 
-// The function `crawlurl` takes in a URL and a flag indicating if the customer is paid or not, and
-// then adds the URL to a list of pages to be crawled, and starts a certain number of goroutines for
-// crawling based on the customer's paid status. 
+
+// The function `crawlurl` is a handler function for an HTTP request that crawls a given URL, checks if
+// it is stored in cache, and if not, retries crawling the URL until it succeeds or reaches the maximum
+// number of retries.
 func crawlurl(w http.ResponseWriter, r *http.Request){
 	url := r.FormValue("url")
 	retries := 3
