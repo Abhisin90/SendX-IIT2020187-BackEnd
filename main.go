@@ -1,14 +1,21 @@
 package main
 
 import (
-	"math/rand"
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"net/http"
-	"github.com/gocolly/colly"
 	"time"
+	"github.com/gocolly/colly"
 )
+
+type CachedData struct {
+	Urls []string
+	TimeStamp int64
+}
+
+var cache = make(map[string]CachedData)
 
 // The function "home" parses and executes an HTML template file named "index.html" and writes the
 // output to the http.ResponseWriter.
@@ -32,11 +39,12 @@ var UserAgents = []string {
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59",
 	"Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1",
 }
+
 // The function `crawling` uses the Colly library in Go to crawl web pages starting from a given URL.
-func crawling(url string) error {	
-	// defer wg.Done()
+func crawling(url string) ([]string ,error) {	
 	c := colly.NewCollector()
 	c.UserAgent = UserAgents[rand.Int() % len(UserAgents)]
+	caching := []string{}
 	fmt.Println(c.UserAgent)
 	c.OnRequest(func(r *colly.Request) { 
 		fmt.Println("Visiting", r.URL) 	
@@ -46,19 +54,26 @@ func crawling(url string) error {
 	}) 
 	c.OnResponse(func(r *colly.Response) { 
 		fmt.Println("Visited", r.Request.URL) 
+		caching = append(caching, r.Request.URL.String())
 	}) 	
     c.OnHTML("a[href]", func(e *colly.HTMLElement) { 
+        if len(caching) > 100 {
+			return 
+		}
 		e.Request.Visit(e.Attr("href"))
 	})
 
 	fmt.Println("Starting crawl at: ", url) 
 		
 	if err := c.Visit(url); err != nil { 
+		if len(caching) > 100 {
+			return caching, nil
+		}
 	    fmt.Println("Error on start of crawl: ", err) 
-		return err
+		return nil,err
 	} 
 	c.Wait()
-	return nil 
+	return caching, nil 
 }
 
 // The function `crawlurl` takes in a URL and a flag indicating if the customer is paid or not, and
@@ -66,44 +81,46 @@ func crawling(url string) error {
 // crawling based on the customer's paid status. 
 func crawlurl(w http.ResponseWriter, r *http.Request){
 	url := r.FormValue("url")
-	crawling(url)
-	// flag := r.FormValue("paid")
-    // var wg sync.WaitGroup
-	// isPaidCustomer := false
-	// if flag == "true" {
-	// 	isPaidCustomer = true
-	// }
 	retries := 3
-
+	currentTime := time.Now().Unix()
+	currentTimeStamp := time.Unix(currentTime,0)
+	fmt.Println(currentTime)
+	resp, ok := cache[url]
+	if ok {
+		storedTime := resp.TimeStamp 
+		storedTimeStamp := time.Unix(storedTime,0)
+		difference := currentTimeStamp.Sub(storedTimeStamp)
+		minutes := difference.Minutes()
+		if minutes <= 60 {
+			fmt.Println("it is stored in cache")
+			fmt.Println(resp.Urls)
+			return
+		}
+	}
     // Set the delay between retries.
     delay := 100 * time.Millisecond
 
     // Retry the function until it succeeds.
     for i := 0; i < retries; i++ {
-        err := crawling(url)
+        caching, err := crawling(url)
+		if len(caching) > 100 {
+			fmt.Println(caching)
+			cache[url] = CachedData{Urls:caching,TimeStamp: time.Now().Unix()}
+            break
+		}
         if err != nil {
             fmt.Println("Error:", err)
             time.Sleep(delay)
             continue
         }
-
-        // The function succeeded.
-        break
+        // The function succeeded
+		break
     }
 
-	// if(isPaidCustomer){
-	// 	for i := 0; i < 5; i++ {
-	// 		wg.Add(1)
-	// 		go crawling(&wg,url)
-	// 	}
-
-	// } else {
-	// 	for i :=0; i < 2; i++ {
-	// 		wg.Add(1)
-	// 		go crawling(&wg,url)
-	// 	}
-	// }
-	// wg.Wait()
+	for _,data := range cache {
+		fmt.Println(data.TimeStamp)
+		fmt.Println(data.Urls)
+	}
 }
 
 // The handler function routes incoming HTTP requests to different 
@@ -117,6 +134,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// The main function sets up a basic HTTP server that listens on port 8080 and handles requests by
+// calling the "handler" function.
 func main(){
 	http.HandleFunc("/",handler)
 	http.ListenAndServe(":8080",nil)
