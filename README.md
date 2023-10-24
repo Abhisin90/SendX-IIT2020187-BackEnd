@@ -1,3 +1,23 @@
-# Backend Assignment for SendX in Golang language
+# Web Crawler
 
-## It is a web app through which users can type the url can crawl the specific website
+## It is a backend of an web application which accepts users input for URL and fetches crawled URLs
+
+
+### Tasks done: 
+1. Required
+
+## Functionality Overview:
+
+- Accepts a URL to be crawled alongwith isUserPaid status
+- Checks for URL in cached URL data
+- If available, return result
+- Schedules queues depending upon user Paid status
+- Retrives crawled data
+- Displays a JSON object to user consisting of URLs
+
+
+# Setup & Usage
+Make sure you have Go installed in your local environment by running go in your terminal
+Install the Colly framework by using the command go get github.com/gocolly/colly
+Install necesssary dependencies by go install
+Run the server by go run main.go
