@@ -137,9 +137,6 @@ func crawlingMain(w http.ResponseWriter, url string) {
 		expirationMap[url] = time.Now().Unix()
 		mu.Unlock()
 	    renderToUser(w,crawledData)
-		
-		// Print the number of crawled sites.
-		fmt.Println("Total crawled sites:", len(crawledData))
 	}
 }
 
@@ -210,7 +207,7 @@ func crawlurl(w http.ResponseWriter, r *http.Request){
 	}
 
 	for i := 0; i < 2; i++ {
-		wg1.Add(1)
+		wg2.Add(1)
 		go func() {
 			defer wg2.Done()
 

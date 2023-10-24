@@ -27,3 +27,7 @@ Make sure you have Go installed in your local environment by running go in your 
 Install the Colly framework by using the command go get github.com/gocolly/colly
 Install necesssary dependencies by go install
 Run the server by go run main.go
+
+# Demo
+
+https://drive.google.com/file/d/14zyUx4h_32uYs6t2zjMycnibYQBSIom7/view
