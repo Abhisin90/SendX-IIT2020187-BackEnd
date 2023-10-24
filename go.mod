@@ -1,4 +1,4 @@
-module web-crawler
+module github.com/Abhisin90/SendX-IIT2020187-BackEnd
 
 go 1.21.3
 
