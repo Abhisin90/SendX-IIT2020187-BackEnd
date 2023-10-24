@@ -50,6 +50,7 @@ func (q *URLQueue) close() {
 var mu sync.Mutex
 var cache = make(map[string]CachedData)
 var visitedURLs = make(map[string]bool)
+var expirationMap = make(map[string]int64)
 var UserAgents = []string {
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
@@ -126,19 +127,20 @@ func retryCrawlWebsite(url string, retries int) ([]string) {
 // The `crawlingMain` function crawls a website, caches the crawled data, renders it to the user, and
 // prints the number of crawled sites.
 func crawlingMain(w http.ResponseWriter, url string) {
-	mu.Lock()
 	crawledData := retryCrawlWebsite(url,3)
 	if crawledData == nil {
-		fmt.Println("Error occured")
+		fmt.Println("Error occured in Crawling")
 		return
 	} else {
+		mu.Lock()
 		cache[url] = CachedData{Urls: crawledData,TimeStamp: time.Now().Unix()}
+		expirationMap[url] = time.Now().Unix()
+		mu.Unlock()
 	    renderToUser(w,crawledData)
+		
 		// Print the number of crawled sites.
 		fmt.Println("Total crawled sites:", len(crawledData))
 	}
-	
-	defer mu.Unlock()
 }
 
 // The function `checkInCache` checks if a URL is stored in the cache and if it is not expired.
@@ -266,4 +268,32 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main(){
 	http.HandleFunc("/",handler)
 	http.ListenAndServe(":8080",nil)
+
+	// Periodically check and delete expired cached structs
+	go func() {
+		for {
+			time.Sleep(15 * time.Minute) // Check every 15 minute
+
+			currentUnixTime := time.Now().Unix()
+            currentTimeStamp := time.Unix(currentUnixTime,0)
+
+			mu.Lock()
+			for k, expireTime := range expirationMap {
+				storedTimeStamp := time.Unix(expireTime,0)
+				difference := currentTimeStamp.Sub(storedTimeStamp)
+				minutes := difference.Minutes()
+				if minutes > 60 {
+					delete(cache, k)
+					delete(expirationMap, k)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+
+    // Block the main goroutine to keep the program running.
+    select {}
 }
+
+
+
