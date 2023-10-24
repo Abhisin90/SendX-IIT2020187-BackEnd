@@ -5,6 +5,7 @@
 
 ### Tasks done: 
 1. Required
+2. Good
 
 ## Functionality Overview:
 
