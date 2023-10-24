@@ -14,6 +14,11 @@
 - Schedules queues depending upon user Paid status
 - Retrives crawled data
 - Displays a JSON object to user consisting of URLs
+- Uses Colly Web Framework for crawling logic
+- Uses goroutines alongwith waitGroups
+- Uses five goroutiens for paidUsers retrieving faster response
+- Two goroutines are used for nonPaidUsers
+- Uses mutex lock during writing in crawled data, queue,
 
 
 # Setup & Usage

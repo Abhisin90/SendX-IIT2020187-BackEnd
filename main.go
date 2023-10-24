@@ -61,15 +61,15 @@ var UserAgents = []string {
 // the data into JSON format, sets the response header to indicate JSON content, and writes the JSON
 // response to the `http.ResponseWriter`.
 func renderToUser(w http.ResponseWriter, data []string) {
-	jsonResponse, err := json.Marshal(data)
+	renderData, err := json.Marshal(data)
 	if err != nil {
-		http.Error(w, "Failed to marshal JSON", http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch rendering data", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
-	w.Write(jsonResponse)
+	w.Write(renderData)
 }
 
 // The function "crawling" performs web crawling on a given URL and returns a list of crawled URLs.
@@ -161,8 +161,8 @@ func checkInCache (w http.ResponseWriter,url string) bool {
 	return false
 }
 
-// The `crawlurl` function is responsible for crawling a given URL and processing it based on whether
-// the user is a paying customer or not.
+// The function `crawlurl` is a concurrent web crawler that crawls URLs based on whether the customer
+// is paid or non-paid.
 func crawlurl(w http.ResponseWriter, r *http.Request){
 	url := r.FormValue("url")
 
@@ -183,51 +183,53 @@ func crawlurl(w http.ResponseWriter, r *http.Request){
 	var wg2 sync.WaitGroup
 
     // Add the initial URL to the queue.
-	wg1.Add(1)
-	wg2.Add(1)
+
     if isPaid {
         payingCustomerQueue.Enqueue(url)
     } else {
         nonPayingCustomerQueue.Enqueue(url)
     }
 
-    // Create a worker goroutine that crawls URLs from the paying customer queue.
-    go func() {
-        defer wg1.Done()
+	for i := 0; i < 5; i++ {
+		wg1.Add(1)
+		go func() {
+			defer wg1.Done()
 
-        for {
-			if len(payingCustomerQueue.queue) > 0 {
-				url := payingCustomerQueue.Dequeue()
-				crawlingMain(w,url)
-			} else {
-				payingCustomerQueue.close()
-				return
+			for {
+				if len(payingCustomerQueue.queue) > 0 {
+					url := payingCustomerQueue.Dequeue()
+					crawlingMain(w,url)
+				} else {
+					payingCustomerQueue.close()
+					return
+				}
 			}
-        }
-    }()
+		}()
+	}
 
-    // Create a worker goroutine that crawls URLs from the non-paying customer queue.
-    go func() {
-        defer wg2.Done()
+	for i := 0; i < 2; i++ {
+		wg1.Add(1)
+		go func() {
+			defer wg2.Done()
 
-        for {
-			// First check if there are any URLs in the paying customer queue.
-            if len(payingCustomerQueue.queue) > 0 {
-                continue
-            }
-            // Pick a URL from the non-paying customer queue.
-            if len(nonPayingCustomerQueue.queue) > 0 {
-				url := nonPayingCustomerQueue.Dequeue()
-				crawlingMain(w,url)
-			} else {
-				nonPayingCustomerQueue.close()
-				return
+			for {
+				// First check if there are any URLs in the paying customer queue.
+				if len(payingCustomerQueue.queue) > 0 {
+					continue
+				}
+				// Pick a URL from the non-paying customer queue.
+				if len(nonPayingCustomerQueue.queue) > 0 {
+					url := nonPayingCustomerQueue.Dequeue()
+					crawlingMain(w,url)
+				} else {
+					nonPayingCustomerQueue.close()
+					return
+				}
 			}
-        }
-		
-    }()
+			
+		}()
+	}
 
-    // Start processing both queues.
     wg1.Wait()
     wg2.Wait()
 }
